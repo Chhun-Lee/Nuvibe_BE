@@ -3,6 +3,7 @@ package com.umc.nuvibe.domain.user.controller;
 import com.umc.nuvibe.domain.user.dto.request.OAuthSignupReq;
 import com.umc.nuvibe.domain.user.dto.response.OAuthLoginRes;
 import com.umc.nuvibe.domain.user.service.OAuthService;
+import com.umc.nuvibe.domain.user.service.OAuthUserService;
 import com.umc.nuvibe.domain.user.vo.AuthProvider;
 import com.umc.nuvibe.global.apiPayLoad.error.AuthErrorCode;
 import com.umc.nuvibe.global.apiPayLoad.exception.BusinessException;
@@ -35,7 +36,6 @@ public class OAuthController {
     private String frontendUrl;
 
     // 소셜 로그인 페이지로 리다이렉트
-    // 소셜 로그인 페이지로 리다이렉트
     @GetMapping("/{provider}")
     @Operation(summary = "소셜 로그인 시작", description = "해당 소셜 서비스의 로그인 페이지로 리다이렉트합니다.(google, naver, kakao)")
     public ResponseEntity<Void> redirectToOAuth(
@@ -51,7 +51,7 @@ public class OAuthController {
 
         String state = UUID.randomUUID().toString();
 
-        // redirect_uri 저장 (추가)
+        // redirect_uri 저장
         if (redirect_uri != null) {
             oAuthService.saveRedirectUri(state, redirect_uri);
         }
@@ -70,7 +70,7 @@ public class OAuthController {
             @RequestParam String code,
             @RequestParam(required = false) String state) {
 
-        // ✅ 에러 발생 시에도 리다이렉트하기 위해 targetUrl을 먼저 결정
+        // 에러 발생 시에도 리다이렉트하기 위해 targetUrl을 먼저 결정
         String targetUrl = oAuthService.getRedirectUri(state, frontendUrl);
 
         try {
