@@ -1,8 +1,8 @@
 package com.umc.nuvibe.domain.notification.controller;
 
-import com.umc.nuvibe.domain.notification.dto.FcmTokenRequest;  // [추가] FcmTokenRequest import
+import com.umc.nuvibe.domain.notification.dto.FcmTokenRequest;
 import com.umc.nuvibe.domain.notification.dto.NotificationResponse;
-import com.umc.nuvibe.domain.notification.service.FcmService;  // [추가] FcmService import
+import com.umc.nuvibe.domain.notification.service.FcmTokenService;
 import com.umc.nuvibe.domain.notification.service.NotificationService;
 import com.umc.nuvibe.global.apiPayLoad.response.Response;
 import com.umc.nuvibe.global.apiPayLoad.result.NotificationResultCode;
@@ -10,7 +10,7 @@ import com.umc.nuvibe.global.security.annotation.AuthUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;  // [추가] Valid import
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,7 +23,7 @@ import java.util.List;
 public class NotificationController {
 
     private final NotificationService notificationService;
-    private final FcmService fcmService;  // [추가] FcmService 주입
+    private final FcmTokenService fcmTokenService;
 
     // [추가] FCM 토큰 등록 API
     @PostMapping("/fcm-token")
@@ -32,7 +32,7 @@ public class NotificationController {
             @AuthUser Long userId,
             @Valid @RequestBody FcmTokenRequest request
     ) {
-        fcmService.registerToken(userId, request.token());
+        fcmTokenService.registerToken(userId, request.token());
         return Response.ok(NotificationResultCode.FCM_TOKEN_REGISTERED, null);
     }
 

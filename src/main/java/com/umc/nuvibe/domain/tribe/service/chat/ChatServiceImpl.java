@@ -5,8 +5,6 @@ import com.umc.nuvibe.domain.image.entity.Image;
 import com.umc.nuvibe.domain.image.repository.ImageRepository;
 import com.umc.nuvibe.domain.image.vo.ImageStatus;
 import com.umc.nuvibe.domain.image.vo.ImageTag;
-import com.umc.nuvibe.domain.notification.service.FcmService;
-import com.umc.nuvibe.domain.notification.vo.NotificationType;
 import com.umc.nuvibe.domain.tribe.dto.internal.*;
 import com.umc.nuvibe.domain.tribe.dto.request.ChatGridReq;
 import com.umc.nuvibe.domain.tribe.dto.request.ChatTimelineReq;
@@ -31,6 +29,9 @@ import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.umc.nuvibe.domain.notification.event.NotificationEvent;
+import com.umc.nuvibe.domain.notification.vo.NotificationType;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -56,7 +57,7 @@ public class ChatServiceImpl implements ChatService {
 
     private final SimpMessagingTemplate messagingTemplate;
 
-    private final FcmService fcmService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -258,22 +259,12 @@ public class ChatServiceImpl implements ChatService {
 
         registerChatPublish(tribeId, chatSend);
 
-        // 10. 트랜잭션 커밋 후 알림 발송(NOTI-02)
-        TransactionSynchronizationManager.registerSynchronization(
-                new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        List<User> participants = userTribeRepository.findActiveUnmutedUsersByTribeIdExcept(tribeId, userId);
-                        fcmService.sendNotificationToUsers(
-                                participants,
-                                NotificationType.NOTI_02,
-                                tribe.getImageTag().name(),
-                                tribeId,
-                                null
-                        );
-                    }
-                }
-        );
+        // 10. 알림 이벤트 발행 (NOTI-02: 트라이브 챗에 새 바이브)
+        List<Long> recipientIds = userTribeRepository.findActiveUnmutedUsersByTribeIdExcept(tribeId, userId)
+                .stream().map(User::getId).toList();
+        eventPublisher.publishEvent(NotificationEvent.forUsers(
+                NotificationType.NOTI_02, recipientIds,
+                tribe.getImageTag().name(), tribeId, null));
     }
 
     // 커밋 이후 채팅을 소속 트라이브로 발송

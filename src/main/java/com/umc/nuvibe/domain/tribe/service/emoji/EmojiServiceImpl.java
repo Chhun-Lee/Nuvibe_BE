@@ -1,7 +1,5 @@
 package com.umc.nuvibe.domain.tribe.service.emoji;
 
-import com.umc.nuvibe.domain.notification.service.FcmService;
-import com.umc.nuvibe.domain.notification.vo.NotificationType;
 import com.umc.nuvibe.domain.tribe.dto.internal.EmojiChanged;
 import com.umc.nuvibe.domain.tribe.dto.internal.EmojiCountRow;
 import com.umc.nuvibe.domain.tribe.entity.Chat;
@@ -22,6 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import com.umc.nuvibe.domain.notification.event.NotificationEvent;
+import com.umc.nuvibe.domain.notification.vo.NotificationType;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Clock;
 import java.util.List;
@@ -42,7 +43,7 @@ public class EmojiServiceImpl implements EmojiService {
     private final SimpMessagingTemplate messagingTemplate;
     private final Clock clock;
 
-    private final FcmService fcmService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -87,15 +88,9 @@ public class EmojiServiceImpl implements EmojiService {
             if (imageOwner != null && !imageOwner.getId().equals(userId)) {
                 boolean isMuted = userTribeRepository.existsByUser_IdAndTribe_IdAndIsMutedTrue(imageOwner.getId(), tribeId);
                 if (!isMuted) {
-                    User reactor = userRepository.findById(userId).orElse(null);
-                    String nickname = reactor != null ? reactor.getNickname() : "";
-                    fcmService.sendNotification(
-                            imageOwner,
-                            NotificationType.NOTI_03,
-                            chat.getTribe().getImageTag().name(),
-                            chatId,
-                            tribeId
-                    );
+                    eventPublisher.publishEvent(NotificationEvent.forUser(
+                            NotificationType.NOTI_03, imageOwner.getId(),
+                            chat.getTribe().getImageTag().name(), chatId, tribeId));
                 }
             }
 
@@ -121,15 +116,9 @@ public class EmojiServiceImpl implements EmojiService {
                 if (imageOwner != null && !imageOwner.getId().equals(userId)) {
                     boolean isMuted = userTribeRepository.existsByUser_IdAndTribe_IdAndIsMutedTrue(imageOwner.getId(), tribeId);
                     if (!isMuted) {
-                        User reactor = userRepository.findById(userId).orElse(null);
-                        String nickname = reactor != null ? reactor.getNickname() : "";
-                        fcmService.sendNotification(
-                                imageOwner,
-                                NotificationType.NOTI_03,
-                                chat.getTribe().getImageTag().name(),
-                                chatId,
-                                tribeId
-                        );
+                        eventPublisher.publishEvent(NotificationEvent.forUser(
+                                NotificationType.NOTI_03, imageOwner.getId(),
+                                chat.getTribe().getImageTag().name(), chatId, tribeId));
                     }
                 }
             }

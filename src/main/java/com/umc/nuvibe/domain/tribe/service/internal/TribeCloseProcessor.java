@@ -1,7 +1,6 @@
 package com.umc.nuvibe.domain.tribe.service.internal;
 
-import com.umc.nuvibe.domain.notification.service.FcmService;
-import com.umc.nuvibe.domain.notification.vo.NotificationType;
+
 import com.umc.nuvibe.domain.tribe.entity.Tribe;
 import com.umc.nuvibe.domain.tribe.repository.*;
 import com.umc.nuvibe.domain.user.entity.User;
@@ -9,8 +8,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
+import com.umc.nuvibe.domain.notification.event.NotificationEvent;
+import com.umc.nuvibe.domain.notification.vo.NotificationType;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 
@@ -23,7 +23,7 @@ public class TribeCloseProcessor {
     private final ScrapedImageRepository scrapedImageRepository;
     private final UserTribeRepository userTribeRepository;
     private final TribeRepository tribeRepository;
-    private final FcmService fcmService;
+    private final ApplicationEventPublisher eventPublisher;
 
     // 실패 시 부분 롤백으로 제한하기 위해 REQUIRES_NEW 설정
     // 트라이브 챗 자동 삭제 과정
@@ -33,7 +33,9 @@ public class TribeCloseProcessor {
         // 삭제 전에 알림에 필요한 데이터 미리 조회
         Tribe tribe = tribeRepository.findById(tribeId).orElse(null);
         String tagName = tribe != null ? tribe.getImageTag().name() : null;
-        List<User> participants = tribe != null ? userTribeRepository.findAllUsersByTribeId(tribeId) : List.of();
+        List<Long> participantIds = tribe != null
+                ? userTribeRepository.findAllUsersByTribeId(tribeId).stream()
+                .map(User::getId).toList() : List.of();
 
         // 삭제 순서
         // 1. Emoji
@@ -54,22 +56,11 @@ public class TribeCloseProcessor {
         // 5. Tribe
         tribeRepository.deleteById(tribeId);
 
-        // 트랜잭션 커밋 후 알림 발송(NOTI-05)
-        if (tribe != null && !participants.isEmpty()) {
-            TransactionSynchronizationManager.registerSynchronization(
-                    new TransactionSynchronization() {
-                        @Override
-                        public void afterCommit() {
-                            fcmService.sendNotificationToUsers(
-                                    participants,
-                                    NotificationType.NOTI_05,
-                                    tagName,
-                                    tribeId,
-                                    null
-                            );
-                        }
-                    }
-            );
+        // 알림 이벤트 발행 (NOTI-05: 트라이브 챗 종료)
+        if (tribe != null && !participantIds.isEmpty()) {
+            eventPublisher.publishEvent(NotificationEvent.forUsers(
+                    NotificationType.NOTI_05, participantIds,
+                    tagName, tribeId, null));
         }
     }
 }

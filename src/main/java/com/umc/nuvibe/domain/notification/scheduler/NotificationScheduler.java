@@ -1,7 +1,7 @@
 package com.umc.nuvibe.domain.notification.scheduler;
 
 import com.umc.nuvibe.domain.image.vo.ImageTag;
-import com.umc.nuvibe.domain.notification.service.FcmService;
+import com.umc.nuvibe.domain.notification.service.FcmAsyncService;
 import com.umc.nuvibe.domain.notification.vo.NotificationType;
 import com.umc.nuvibe.domain.tribe.dto.internal.CloseTargetView;
 import com.umc.nuvibe.domain.tribe.repository.TribeRepository;
@@ -28,14 +28,14 @@ public class NotificationScheduler {
 
     private final TribeRepository tribeRepository;
     private final UserTribeRepository userTribeRepository;
-    private final FcmService fcmService;
+    private final FcmAsyncService fcmAsyncService;
     private final Clock clock;
     private final UserRepository userRepository;
 
     private static final int MIN_ACTIVE_COUNT = 5;
 
 
-    // NOTI-05: 트라이브 종료 예고 (D-1)
+    // NOTI-04: 트라이브 종료 예고 (D-1)
     // 매일 0시, 12시에 실행
     // 6일 경과 + 활성 인원 5명 미만인 트라이브 대상
     @Scheduled(cron = "0 0 0/12 * * *", zone = "Asia/Seoul")
@@ -61,13 +61,9 @@ public class NotificationScheduler {
                     List<User> participants = userTribeRepository.findActiveUsersByTribeId(target.getTribeId());
                     String tag = target.getImageTag() != null ? target.getImageTag().name() : "";
 
-                    fcmService.sendNotificationToUsers(
-                            participants,
-                            NotificationType.NOTI_04,
-                            tag,
-                            target.getTribeId(),
-                            null
-                    );
+                    for (User participant : participants) {
+                        fcmAsyncService.sendNotification(participant, NotificationType.NOTI_04, tag, target.getTribeId(), null);
+                    }
                 } catch (Exception e) {
                     log.error("NOTI-04 발송 실패. tribeId={}", target.getTribeId(), e);
                 }
@@ -97,13 +93,7 @@ public class NotificationScheduler {
 
             for (User user : usersWithoutDrop) {
                 try {
-                    fcmService.sendNotification(
-                            user,
-                            NotificationType.NOTI_06,
-                            null,
-                            null,
-                            null
-                    );
+                    fcmAsyncService.sendNotification(user, NotificationType.NOTI_06, null, null, null);
                 } catch (Exception e) {
                     log.error("NOTI-06 발송 실패. userId={}", user.getId(), e);
                 }
@@ -137,7 +127,8 @@ public class NotificationScheduler {
             for (User user : inactiveUsers) {
                 try {
                     ImageTag randomTag = allTags[random.nextInt(allTags.length)];
-                    fcmService.sendNotification(user, NotificationType.NOTI_07, randomTag.name(), null, null);
+                    fcmAsyncService.sendNotification(user, NotificationType.NOTI_07, randomTag.name(), null, null);
+
                 } catch (Exception e) {
                     log.error("NOTI-07 발송 실패. userId={}", user.getId(), e);
                 }
@@ -168,7 +159,7 @@ public class NotificationScheduler {
 
             for (User user : usersWithWeeklyDrop) {
                 try {
-                    fcmService.sendNotification(user, NotificationType.NOTI_08, null, null, null);
+                    fcmAsyncService.sendNotification(user, NotificationType.NOTI_08, null, null, null);
                 } catch (Exception e) {
                     log.error("NOTI-08 발송 실패. userId={}", user.getId(), e);
                 }
@@ -199,7 +190,7 @@ public class NotificationScheduler {
 
             for (User user : usersWithMonthlyDrop) {
                 try {
-                    fcmService.sendNotification(user, NotificationType.NOTI_09, null, null, null);
+                    fcmAsyncService.sendNotification(user, NotificationType.NOTI_09, null, null, null);
                 } catch (Exception e) {
                     log.error("NOTI-09 발송 실패. userId={}", user.getId(), e);
                 }

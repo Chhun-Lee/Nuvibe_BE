@@ -1,8 +1,6 @@
 package com.umc.nuvibe.domain.tribe.service.tribe;
 
 import com.umc.nuvibe.domain.image.vo.ImageTag;
-import com.umc.nuvibe.domain.notification.service.FcmService;
-import com.umc.nuvibe.domain.notification.vo.NotificationType;
 import com.umc.nuvibe.domain.tribe.dto.request.TribeJoinReq;
 import com.umc.nuvibe.domain.tribe.dto.response.tribe.TribeJoinRes;
 import com.umc.nuvibe.global.apiPayLoad.error.TribeErrorCode;
@@ -16,8 +14,10 @@ import com.umc.nuvibe.global.apiPayLoad.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
+import com.umc.nuvibe.domain.notification.event.NotificationEvent;
+import com.umc.nuvibe.domain.notification.vo.NotificationType;
+import org.springframework.context.ApplicationEventPublisher;
+
 
 import java.util.List;
 
@@ -28,7 +28,7 @@ public class TribeServiceImpl implements TribeService {
     private final TribeRepository tribeRepository;
     private final UserTribeRepository userTribeRepository;
     private final UserRepository userRepository;
-    private final FcmService fcmService;
+    private final ApplicationEventPublisher eventPublisher;
 
 
     @Override
@@ -69,21 +69,11 @@ public class TribeServiceImpl implements TribeService {
             List<User> existingWaiters = userTribeRepository.findWaitingUsersByTribeIdExcept(tribeId, userId);
 
             if (!existingWaiters.isEmpty()) {
-                TransactionSynchronizationManager.registerSynchronization(
-                        new TransactionSynchronization() {
-                            @Override
-                            public void afterCommit() {
-                                // NOTI-01: 기존 대기자에게 "기다리던 트라이브 챗이 열렸어요"
-                                fcmService.sendNotificationToUsers(
-                                        existingWaiters,
-                                        NotificationType.NOTI_01,
-                                        tagName,
-                                        null,       // relatedId
-                                        tribeId     // tribeId
-                                );
-                            }
-                        }
-                );
+                List<Long> waiterIds = existingWaiters.stream()
+                        .map(User::getId).toList();
+                eventPublisher.publishEvent(NotificationEvent.forUsers(
+                        NotificationType.NOTI_01, waiterIds,
+                        tagName, null, tribeId));
             }
         }
 
