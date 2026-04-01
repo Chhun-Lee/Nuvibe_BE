@@ -1,9 +1,8 @@
 package com.umc.nuvibe.domain.user.controller;
 
-import com.umc.nuvibe.domain.user.dto.request.OAuthSignupReq;
-import com.umc.nuvibe.domain.user.dto.response.OAuthLoginRes;
-import com.umc.nuvibe.domain.user.service.OAuthService;
-import com.umc.nuvibe.domain.user.service.OAuthUserService;
+import com.umc.nuvibe.domain.user.dto.request.OAuth2SignupReq;
+import com.umc.nuvibe.domain.user.dto.response.OAuth2LoginRes;
+import com.umc.nuvibe.domain.user.service.OAuth2Service;
 import com.umc.nuvibe.domain.user.vo.AuthProvider;
 import com.umc.nuvibe.global.apiPayLoad.error.AuthErrorCode;
 import com.umc.nuvibe.global.apiPayLoad.exception.BusinessException;
@@ -28,9 +27,9 @@ import java.util.UUID;
 @RequestMapping("/api/auth/oauth2")
 @RequiredArgsConstructor
 @Tag(name = "OAuth", description = "소셜 로그인 API")
-public class OAuthController {
+public class OAuth2Controller {
 
-    private final OAuthService oAuthService;
+    private final OAuth2Service oAuth2Service;
 
     @Value("${frontend.url}")
     private String frontendUrl;
@@ -53,10 +52,10 @@ public class OAuthController {
 
         // redirect_uri 저장
         if (redirect_uri != null) {
-            oAuthService.saveRedirectUri(state, redirect_uri);
+            oAuth2Service.saveRedirectUri(state, redirect_uri);
         }
 
-        String authUrl = oAuthService.getOAuthAuthorizationUrl(authProvider, state);
+        String authUrl = oAuth2Service.getOAuthAuthorizationUrl(authProvider, state);
 
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create(authUrl))
@@ -71,7 +70,7 @@ public class OAuthController {
             @RequestParam(required = false) String state) {
 
         // 에러 발생 시에도 리다이렉트하기 위해 targetUrl을 먼저 결정
-        String targetUrl = oAuthService.getRedirectUri(state, frontendUrl);
+        String targetUrl = oAuth2Service.getRedirectUri(state, frontendUrl);
 
         try {
             AuthProvider authProvider;
@@ -83,7 +82,7 @@ public class OAuthController {
                         AuthErrorCode.UNSUPPORTED_OAUTH_PROVIDER.getMessage());
             }
 
-            OAuthLoginRes response = oAuthService.processOAuthCallback(authProvider, code, state);
+            OAuth2LoginRes response = oAuth2Service.processOAuthCallback(authProvider, code, state);
 
             String fragmentRaw = "accessToken=" + response.accessToken()
                     + "&refreshToken=" + response.refreshToken()
@@ -132,10 +131,10 @@ public class OAuthController {
     @Operation(summary = "소셜 회원가입 완료", description = "신규 소셜 유저가 추가 정보를 입력합니다.")
     public ResponseEntity<?> completeOAuthSignup(
             @AuthenticationPrincipal Long userId,
-            @RequestBody OAuthSignupReq request) {
+            @RequestBody OAuth2SignupReq request) {
 
         // userDetails에서 유저 정보 가져와서 업데이트
-        oAuthService.completeSignup(userId, request);
+        oAuth2Service.completeSignup(userId, request);
 
         return ResponseEntity.ok(Response.ok(UserResultCode.USER_SIGNUP_OK));
     }

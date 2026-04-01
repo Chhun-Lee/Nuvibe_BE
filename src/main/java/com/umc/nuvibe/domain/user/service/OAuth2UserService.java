@@ -1,9 +1,9 @@
 package com.umc.nuvibe.domain.user.service;
 
-import com.umc.nuvibe.domain.user.dto.request.OAuthSignupReq;
-import com.umc.nuvibe.domain.user.dto.response.OAuthLoginRes;
+import com.umc.nuvibe.domain.user.dto.request.OAuth2SignupReq;
+import com.umc.nuvibe.domain.user.dto.response.OAuth2LoginRes;
 import com.umc.nuvibe.domain.user.entity.User;
-import com.umc.nuvibe.domain.user.oauth.OAuth2UserInfo;
+import com.umc.nuvibe.global.security.oauth2.OAuth2UserInfo;
 import com.umc.nuvibe.domain.user.repository.UserRepository;
 import com.umc.nuvibe.global.apiPayLoad.error.AuthErrorCode;
 import com.umc.nuvibe.global.apiPayLoad.error.UserErrorCode;
@@ -17,13 +17,13 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class OAuthUserService {
+public class OAuth2UserService {
 
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
 
     @Transactional
-    public OAuthLoginRes processOAuthUser(OAuth2UserInfo userInfo) {
+    public OAuth2LoginRes processOAuthUser(OAuth2UserInfo userInfo) {
         String email = userInfo.getEmail();
         if (email == null || email.isBlank()) {
             throw new BusinessException(AuthErrorCode.OAUTH_EMAIL_NOT_PROVIDED);
@@ -43,7 +43,7 @@ public class OAuthUserService {
 
         user.updateRefreshToken(refreshToken);
 
-        return new OAuthLoginRes(
+        return new OAuth2LoginRes(
                 accessToken, refreshToken, isNewUser,
                 user.getId(), user.getEmail(), user.getProvider()
         );
@@ -59,7 +59,7 @@ public class OAuthUserService {
     }
 
     @Transactional
-    public void completeSignup(Long userId, OAuthSignupReq request) {
+    public void completeSignup(Long userId, OAuth2SignupReq request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
 

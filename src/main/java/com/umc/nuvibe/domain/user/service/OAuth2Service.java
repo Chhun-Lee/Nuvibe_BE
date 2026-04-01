@@ -1,9 +1,9 @@
 package com.umc.nuvibe.domain.user.service;
 
-import com.umc.nuvibe.domain.user.dto.request.OAuthSignupReq;
-import com.umc.nuvibe.domain.user.dto.response.OAuthLoginRes;
-import com.umc.nuvibe.domain.user.oauth.OAuth2UserInfo;
-import com.umc.nuvibe.domain.user.oauth.OAuth2UserInfoFactory;
+import com.umc.nuvibe.domain.user.dto.request.OAuth2SignupReq;
+import com.umc.nuvibe.domain.user.dto.response.OAuth2LoginRes;
+import com.umc.nuvibe.global.security.oauth2.OAuth2UserInfo;
+import com.umc.nuvibe.global.security.oauth2.OAuth2UserInfoFactory;
 import com.umc.nuvibe.domain.user.vo.AuthProvider;
 import com.umc.nuvibe.global.apiPayLoad.error.AuthErrorCode;
 import com.umc.nuvibe.global.apiPayLoad.exception.BusinessException;
@@ -31,9 +31,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class OAuthService {
+public class OAuth2Service {
 
-    private final OAuthUserService oAuthUserService;
+    private final OAuth2UserService oAuth2UserService;
     private final OAuth2Properties oAuth2Properties;
     private final WebClient webClient = WebClient.builder()
             .clientConnector(new ReactorClientHttpConnector(
@@ -63,7 +63,7 @@ public class OAuthService {
         };
     }
 
-    public OAuthLoginRes processOAuthCallback(AuthProvider provider, String code, String state) {
+    public OAuth2LoginRes processOAuthCallback(AuthProvider provider, String code, String state) {
         // 트랜잭션 밖: state 검증 + 외부 API 호출
         validateState(state);
         String accessToken = getAccessToken(provider, code);
@@ -71,11 +71,11 @@ public class OAuthService {
         OAuth2UserInfo userInfo = OAuth2UserInfoFactory.getOAuth2UserInfo(provider, attributes);
 
         // 트랜잭션 안: DB 작업 위임
-        return oAuthUserService.processOAuthUser(userInfo);
+        return oAuth2UserService.processOAuthUser(userInfo);
     }
 
-    public void completeSignup(Long userId, OAuthSignupReq request) {
-        oAuthUserService.completeSignup(userId, request);
+    public void completeSignup(Long userId, OAuth2SignupReq request) {
+        oAuth2UserService.completeSignup(userId, request);
     }
 
     public void saveRedirectUri(String state, String redirectUri) {

@@ -1,22 +1,12 @@
-FROM eclipse-temurin:21-jre-alpine
-
-LABEL maintainer="nuvibe"
-LABEL description="Nuvibe Spring Boot Application"
-
-# 작업 디렉토리 설정
+# Stage 1: Build
+FROM eclipse-temurin:21-jdk-alpine AS builder
 WORKDIR /app
+COPY . .
+RUN chmod +x gradlew && ./gradlew build -x test
 
-# Alpine에 curl 설치 (healthcheck용)
-RUN apk add --no-cache curl
-
-ENV TZ=Asia/Seoul
-ENV SPRING_PROFILES_ACTIVE=prod
-
-# 포트 노출
+# Stage 2: Run
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+COPY --from=builder /app/build/libs/*.jar app.jar
 EXPOSE 8080
-
-# 빌드된 JAR 파일 복사
-COPY build/libs/*.jar app.jar
-
-# 애플리케이션 실행
 ENTRYPOINT ["java", "-jar", "app.jar"]

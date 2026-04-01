@@ -1,4 +1,4 @@
-package com.umc.nuvibe.domain.user.oauth;
+package com.umc.nuvibe.global.security.oauth2;
 
 import com.umc.nuvibe.domain.user.vo.AuthProvider;
 import lombok.RequiredArgsConstructor;
