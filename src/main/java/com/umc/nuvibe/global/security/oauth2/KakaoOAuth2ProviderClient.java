@@ -1,0 +1,59 @@
+package com.umc.nuvibe.global.security.oauth2;
+
+import com.umc.nuvibe.domain.user.vo.AuthProvider;
+import com.umc.nuvibe.global.config.OAuth2Properties;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.util.Map;
+
+@Component
+@RequiredArgsConstructor
+public class KakaoOAuth2ProviderClient implements OAuth2ProviderClient {
+
+    private final OAuth2Properties oAuth2Properties;
+
+    @Override
+    public AuthProvider getProviderType() {
+        return AuthProvider.KAKAO;
+    }
+
+    @Override
+    public String buildAuthorizationUrl(String state) {
+        return UriComponentsBuilder.fromUriString("https://kauth.kakao.com/oauth/authorize")
+                .queryParam("client_id", oAuth2Properties.getKakao().getClientId())
+                .queryParam("redirect_uri", oAuth2Properties.getKakao().getRedirectUri())
+                .queryParam("response_type", "code")
+                .queryParam("state", state)
+                .build().encode().toUriString();
+    }
+
+    @Override
+    public String getTokenUrl() {
+        return "https://kauth.kakao.com/oauth/token";
+    }
+
+    @Override
+    public String getUserInfoUrl() {
+        return "https://kapi.kakao.com/v2/user/me";
+    }
+
+    @Override
+    public MultiValueMap<String, String> buildTokenRequestParams(String code) {
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("grant_type", "authorization_code");
+        params.add("code", code);
+        params.add("client_id", oAuth2Properties.getKakao().getClientId());
+        params.add("client_secret", oAuth2Properties.getKakao().getClientSecret());
+        params.add("redirect_uri", oAuth2Properties.getKakao().getRedirectUri());
+        return params;
+    }
+
+    @Override
+    public OAuth2UserInfo extractUserInfo(Map<String, Object> attributes) {
+        return new KakaoOAuth2UserInfo(attributes);
+    }
+}
